@@ -1,17 +1,31 @@
 """
-ToDos REST API
+GraphQL Books schema and data store.
 
 From the LinkedIn Learning course "Programming Foundations: APIs and Web Services" (Kesha Williams, 2025)
 https://www.linkedin.com/learning/programming-foundations-apis-and-web-services-27993033
 """
 
 from graphene import ObjectType, String, List, Field, Schema, Mutation, Boolean
+import json
 
-# In-memory data store for books
-books_data = [
-    {"title": "1984", "author": "George Orwell"},
-    {"title": "The Great Gatsby", "author": "F. Scott Fitzgerald"},
-]
+DATA_FILE = 'books_data.json'
+
+
+def load_books():
+    """Loads books_data from the JSON file."""
+    with open(DATA_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+def save_books():
+    """Saves the current books_data list to the JSON file."""
+    with open(DATA_FILE, 'w', encoding='utf-8') as f:
+        json.dump(books_data, f, ensure_ascii=False, indent=2)
+
+
+# In-memory data store for books, initialized from JSON file
+books_data = load_books()
+
 
 #
 # 1) GraphQL Book type
@@ -35,16 +49,16 @@ class Query(ObjectType):
     books = List(Book)
 
     def resolve_book(root, info, title):
-        # Return the first matching book or None
         for b in books_data:
-            if b["title"] == title:
-                return Book(title=b["title"], author=b["author"])
+            if b['title'] == title:
+                return Book(title=b['title'], author=b['author'])
         return None
 
     def resolve_books(root, info):
         return [
-            Book(title=b["title"], author=b["author"]) for b in books_data
+            Book(title=b['title'], author=b['author']) for b in books_data
         ]
+
 
 #
 # 3) Mutation to add a new book
@@ -58,11 +72,10 @@ class AddBook(Mutation):
     book = Field(Book)
 
     def mutate(root, info, title, author):
-        # Add the new book to our in-memory data
-        new_entry = {"title": title, "author": author}
+        new_entry = {'title': title, 'author': author}
         books_data.append(new_entry)
+        save_books()
 
-        # Return the mutation result
         return AddBook(
             success=True,
             book=Book(title=title, author=author)
@@ -80,36 +93,3 @@ class Mutation(ObjectType):
 # 5) Build the GraphQL schema
 #
 schema = Schema(query=Query, mutation=Mutation)
-
-
-if __name__ == "__main__":
-    # A) Query all books
-    query_all = """
-    {
-      books {
-        title
-        author
-      }
-    }
-    """
-    result_all = schema.execute(query_all)
-    print("\nInitial Books Query:\n", result_all.data)
-
-    # B) Mutation: Add a new Book
-    mutation_add = """
-    mutation {
-      addBook(title: "Dune", author: "Frank Herbert") {
-        success
-        book {
-          title
-          author
-        }
-      }
-    }
-    """
-    result_mutation = schema.execute(mutation_add)
-    print("\nAdd Book Mutation:\n", result_mutation.data)
-
-    # C) Query again to confirm the new book was added
-    result_all_after = schema.execute(query_all)
-    print("\nBooks After Mutation:\n", result_all_after.data)
