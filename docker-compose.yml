@@ -1,0 +1,6 @@
+services:
+  books:
+    build: .
+    container_name: py-books-graphql
+    working_dir: /app
+    command: tail -f /dev/null
